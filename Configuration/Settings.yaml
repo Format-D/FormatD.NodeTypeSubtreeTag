@@ -1,0 +1,7 @@
+Neos:
+  ContentRepositoryRegistry:
+    presets:
+      default:
+        commandHooks:
+          'FormatD.NodeTypeSubtreeTag:NodeTypeSubtreeTaggingCommandHook':
+            factoryObjectName: FormatD\NodeTypeSubtreeTag\CommandHook\NodeTypeSubtreeTaggingCommandHookFactory
