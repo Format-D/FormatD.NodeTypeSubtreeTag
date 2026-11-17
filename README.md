@@ -75,6 +75,16 @@ The `workspaces` key is optional:
 - If omitted, the tag is applied in all workspaces
 - If specified, the tag is only applied when a node is created in one of the listed workspaces
 
+### Tagging existing nodes
+
+Tags are only applied on node (variant) creation. To tag nodes that existed before the configuration was added, run:
+
+```bash
+./flow subtreetag:apply --workspace live [--dry-run]
+```
+
+Already tagged nodes are skipped. Workspaces based on the tagged workspace have to be rebased to see the new tags.
+
 ### Error Handling
 
 - **Invalid tag format:** If a tag doesn't match the required pattern, node creation fails with an error
