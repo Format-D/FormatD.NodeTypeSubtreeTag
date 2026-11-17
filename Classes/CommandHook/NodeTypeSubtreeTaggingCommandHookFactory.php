@@ -16,7 +16,8 @@ final class NodeTypeSubtreeTaggingCommandHookFactory implements CommandHookFacto
     public function build(CommandHooksFactoryDependencies $dependencies): CommandHookInterface
     {
         return new NodeTypeSubtreeTaggingCommandHook(
-            new NodeTypeSubtreeTagResolver($dependencies->nodeTypeManager)
+            new NodeTypeSubtreeTagResolver($dependencies->nodeTypeManager),
+            $dependencies->contentGraphReadModel
         );
     }
 }
