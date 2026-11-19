@@ -6,7 +6,7 @@ Automatic SubtreeTag assignment based on NodeType configuration for Neos 9.
 
 ### Configure NodeType with Subtree Tags
 
-Add `subtree.tags` configuration to your NodeType definition. Tags support flexible configuration with per-tag workspace restrictions:
+Add `options.subtree.tags` configuration to your NodeType definition. Tags support flexible configuration with per-tag workspace restrictions:
 
 ```yaml
 'Your.Package:Document.Example':
@@ -15,55 +15,79 @@ Add `subtree.tags` configuration to your NodeType definition. Tags support flexi
   properties:
     title:
       type: string
-  subtree:
-    tags:
-      - 'my-tag'                              # Simple string: applies in all workspaces
-      - tag: 'special-tag'                    # Object format with workspace restriction
-        workspaces:
-          - 'live'
-          - 'user-admin'
+  options:
+    subtree:
+      tags:
+        - 'my-tag'                              # Simple string: applies in all workspaces
+        - tag: 'special-tag'                    # Object format with workspace restriction
+          workspaces:
+            - 'live'
+            - 'user-admin'
 ```
+
+### Migrating from the top-level `subtree` key
+
+Earlier versions read the tags from a top-level `subtree.tags` key. Neos' NodeTypes schema forbids unknown top-level keys,
+so this showed up as "This property is not allowed here" in the configuration module. Move the block below `options`:
+
+```diff
+ 'Vendor.Site:Document.Example':
+-  subtree:
+-    tags:
+-      - 'my-tag'
++  options:
++    subtree:
++      tags:
++        - 'my-tag'
+```
+
+The legacy key is still read as a fallback (tags from both locations are merged) but is deprecated and will be removed
+in the next major version. Every node type still using it is reported as a warning in the system log
+(`Data/Logs/System.log`) and by `./flow subtreetag:apply`.
 
 ### Configuration Options
 
-#### `subtree.tags` (required)
+#### `options.subtree.tags` (required)
 
 Array of tag definitions. Each tag can be configured in three formats:
 
 ##### 1. Simple String Format
 ```yaml
-subtree:
-  tags:
-    - 'my-tag'
-    - 'archived'
-    - 'custom_tag'
+options:
+  subtree:
+    tags:
+      - 'my-tag'
+      - 'archived'
+      - 'custom_tag'
 ```
 
 Applies the tag in all workspaces.
 
 ##### 2. Inline Key-Value Format
 ```yaml
-subtree:
-  tags:
-    myTag: 'my-tag'
-    archived: 'archived'
+options:
+  subtree:
+    tags:
+      myTag: 'my-tag'
+      archived: 'archived'
 ```
 
 Applies the tag in all workspaces. The key name is ignored, only the value is used.
 
 ##### 3. Object Format with Workspace Control
 ```yaml
-subtree:
-  tags:
-    - tag: 'published'
-      workspaces:
-        - 'live'
-    - tag: 'draft'
-      workspaces:
-        - 'user-default'
-        - 'user-admin'
-    - tag: 'always-applied'
-      # Omit 'workspaces' to apply in all workspaces
+options:
+  subtree:
+    tags:
+      - tag: 'published'
+        workspaces:
+          - 'live'
+      - tag: 'draft'
+        workspaces:
+          - 'user-default'
+          - 'user-admin'
+      - tag: 'always-applied'
+        # Omit 'workspaces' to apply in all workspaces
 ```
 
 Tag names must:
@@ -99,9 +123,10 @@ Already tagged nodes are skipped. Workspaces based on the tagged workspace have 
 'Vendor.Site:Document.Standard':
   superTypes:
     'Neos.Neos:Document': true
-  subtree:
-    tags:
-      - 'standard-doc'
+  options:
+    subtree:
+      tags:
+        - 'standard-doc'
 ```
 
 ### Apply tags in specific workspaces only
@@ -110,11 +135,12 @@ Already tagged nodes are skipped. Workspaces based on the tagged workspace have 
 'Vendor.Site:Document.Published':
   superTypes:
     'Neos.Neos:Document': true
-  subtree:
-    tags:
-      - tag: 'published'
-        workspaces:
-          - 'live'
+  options:
+    subtree:
+      tags:
+        - tag: 'published'
+          workspaces:
+            - 'live'
 ```
 
 ### Mixed format: Some tags in all workspaces, some in specific workspaces
@@ -123,15 +149,16 @@ Already tagged nodes are skipped. Workspaces based on the tagged workspace have 
 'Vendor.Site:Document.Mixed':
   superTypes:
     'Neos.Neos:Document': true
-  subtree:
-    tags:
-      - 'always-tagged'                       # Applies in all workspaces
-      - tag: 'only-in-live'
-        workspaces:
-          - 'live'
-      - tag: 'draft-only'
-        workspaces:
-          - 'user-default'
+  options:
+    subtree:
+      tags:
+        - 'always-tagged'                       # Applies in all workspaces
+        - tag: 'only-in-live'
+          workspaces:
+            - 'live'
+        - tag: 'draft-only'
+          workspaces:
+            - 'user-default'
 ```
 
 ### Multiple tags with different workspace restrictions
@@ -140,14 +167,15 @@ Already tagged nodes are skipped. Workspaces based on the tagged workspace have 
 'Vendor.Site:Document.Review':
   superTypes:
     'Neos.Neos:Document': true
-  subtree:
-    tags:
-      - tag: 'under-review'
-        workspaces:
-          - 'user-admin'
-          - 'user-editor'
-      - tag: 'published'
-        workspaces:
-          - 'live'
-      - 'internal'                            # All workspaces
+  options:
+    subtree:
+      tags:
+        - tag: 'under-review'
+          workspaces:
+            - 'user-admin'
+            - 'user-editor'
+        - tag: 'published'
+          workspaces:
+            - 'live'
+        - 'internal'                            # All workspaces
 ```

@@ -6,11 +6,25 @@ namespace FormatD\NodeTypeSubtreeTag\Service;
 
 use Neos\ContentRepository\Core\NodeType\NodeTypeManager;
 use Neos\ContentRepository\Core\NodeType\NodeTypeName;
+use Psr\Log\LoggerInterface;
 
 class NodeTypeSubtreeTagResolver
 {
+    public const CONFIGURATION_PATH = 'options.subtree.tags';
+
+    /**
+     * @deprecated top-level "subtree" is rejected by the NodeTypes schema, use {@see self::CONFIGURATION_PATH}
+     */
+    public const LEGACY_CONFIGURATION_PATH = 'subtree.tags';
+
+    /**
+     * @var array<string, true>
+     */
+    protected array $reportedLegacyNodeTypes = [];
+
     public function __construct(
-        private readonly NodeTypeManager $nodeTypeManager
+        protected readonly NodeTypeManager $nodeTypeManager,
+        protected readonly ?LoggerInterface $logger = null
     ) {
     }
 
@@ -30,22 +44,52 @@ class NodeTypeSubtreeTagResolver
             return [];
         }
 
-        $tagsConfig = $nodeType->getConfiguration('subtree.tags');
+        $tagsConfig = $nodeType->getConfiguration(self::CONFIGURATION_PATH);
+        $legacyTagsConfig = $nodeType->getConfiguration(self::LEGACY_CONFIGURATION_PATH);
 
-        if (!\is_array($tagsConfig)) {
-            return [];
+        if ($legacyTagsConfig !== null) {
+            $this->reportLegacyConfiguration($nodeTypeName);
         }
 
+        // keyed by tag name, so a tag configured in both places is only applied once (new config wins)
         $normalizedTags = [];
-
-        foreach ($tagsConfig as $key => $tag) {
-            $normalized = $this->normalizeTagConfig($key, $tag);
-            if ($normalized !== null) {
-                $normalizedTags[] = $normalized;
+        foreach ([$legacyTagsConfig, $tagsConfig] as $config) {
+            if (!\is_array($config)) {
+                continue;
+            }
+            foreach ($config as $key => $tag) {
+                $normalized = $this->normalizeTagConfig($key, $tag);
+                if ($normalized !== null) {
+                    $normalizedTags[$normalized['name']] = $normalized;
+                }
             }
         }
 
-        return $normalizedTags;
+        return array_values($normalizedTags);
+    }
+
+    public function usesLegacyConfiguration(NodeTypeName $nodeTypeName): bool
+    {
+        return $this->nodeTypeManager->getNodeType($nodeTypeName)?->getConfiguration(self::LEGACY_CONFIGURATION_PATH) !== null;
+    }
+
+    public static function legacyConfigurationMessage(NodeTypeName $nodeTypeName): string
+    {
+        return \sprintf(
+            'NodeType "%s" (or one of its supertypes) configures subtree tags via the deprecated top-level "%s". Move it to "%s", the legacy path will be removed in the next major version.',
+            $nodeTypeName->value,
+            self::LEGACY_CONFIGURATION_PATH,
+            self::CONFIGURATION_PATH
+        );
+    }
+
+    protected function reportLegacyConfiguration(NodeTypeName $nodeTypeName): void
+    {
+        if ($this->logger === null || isset($this->reportedLegacyNodeTypes[$nodeTypeName->value])) {
+            return;
+        }
+        $this->reportedLegacyNodeTypes[$nodeTypeName->value] = true;
+        $this->logger->warning(self::legacyConfigurationMessage($nodeTypeName));
     }
 
     /**

@@ -16,6 +16,7 @@ use Neos\ContentRepositoryRegistry\ContentRepositoryRegistry;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Cli\CommandController;
 use Neos\Flow\Security\Context as SecurityContext;
+use Psr\Log\LoggerInterface;
 
 class SubtreeTagCommandController extends CommandController
 {
@@ -24,6 +25,9 @@ class SubtreeTagCommandController extends CommandController
 
     #[Flow\Inject]
     protected SecurityContext $securityContext;
+
+    #[Flow\Inject(name: 'Neos.Flow:SystemLogger')]
+    protected LoggerInterface $logger;
 
     /**
      * Apply the configured subtree tags to already existing nodes
@@ -36,13 +40,16 @@ class SubtreeTagCommandController extends CommandController
     {
         $contentRepositoryInstance = $this->contentRepositoryRegistry->get(ContentRepositoryId::fromString($contentRepository));
         $workspaceName = WorkspaceName::fromString($workspace);
-        $tagResolver = new NodeTypeSubtreeTagResolver($contentRepositoryInstance->getNodeTypeManager());
+        $tagResolver = new NodeTypeSubtreeTagResolver($contentRepositoryInstance->getNodeTypeManager(), $this->logger);
 
         $taggedCount = 0;
         foreach ($contentRepositoryInstance->getNodeTypeManager()->getNodeTypes(false) as $nodeType) {
             $tags = $tagResolver->resolveTagsForNodeType($nodeType->name);
             if ($tags === []) {
                 continue;
+            }
+            if ($tagResolver->usesLegacyConfiguration($nodeType->name)) {
+                $this->outputLine('<comment>DEPRECATED: %s</comment>', [NodeTypeSubtreeTagResolver::legacyConfigurationMessage($nodeType->name)]);
             }
             $tagResolver->validateTags($tags);
 
